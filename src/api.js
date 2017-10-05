@@ -1,10 +1,12 @@
+const md5 = require('md5');
 const express = require('express');
 const router = express.Router();
 
 const request = require('request');
 const admin = require('firebase-admin');
 
-const serviceAccount = require('./fs-auth.json');
+const email = require('./email');
+const serviceAccount = require('../fs-auth.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -12,6 +14,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
+const hash = url => md5(url);
 
 /**
  * POST /crawl_all triggers a lambda function for each item in 'products'
@@ -23,9 +26,12 @@ router.post('/crawl_all', (req, res) => {
       request({
         url: `${process.env.LAMBDA_ENDPOINT}/dev/crawl`,
         method: 'POST',
-        form: Object.assign({}, {
+        json: Object.assign({}, {
           id: doc.id,
-        }, doc.data())
+        }, doc.data()),
+        headers: {
+          "Content-type": "application/json",
+        },
       });
     });
 
@@ -49,50 +55,30 @@ router.post('/products', (req, res) => {
   request({
     url: `${process.env.LAMBDA_ENDPOINT}/dev/add`,
     method: 'POST',
-    form: {
+    json: {
       url,
-    }
+    },
+    headers: {
+      "Content-type": "application/json",
+    },
   }, (error, response, body) => {
     if (error) {
       return res.status(500).json({ message: 'Something went wrong', error });
     }
 
-    const scrapedInfo = JSON.parse(body);
+    const scrapedInfo = body;
+    if (!scrapedInfo.url) {
+      return res.status(500).json({ message: 'something went wrong with scraping the url; attached the data from scraping server', scrapedInfo });
+    }
 
-    /**
-     * TODO lets assign doc ids as normalized product url
-     * this is required for updating the price later
-     */
-
-    db.collection('products').add(
-      Object.assign({}, {
-        url,
-        created: new Date(),
-      }, scrapedInfo)
-    ).then(docRef => {
+    db.collection('products').doc(hash(scrapedInfo.url)).set(Object.assign({}, {
+      created: new Date(),
+    }, scrapedInfo)).then(docRef => {
       res.json({ message: 'Successfully added url', ackId: docRef.id });
     }).catch(e => {
       res.status(500).json({ message: 'Something went wrong', error: e });
     });
   });
-});
-
-
-/**
- * GET /products - retreives all products in GFS
- */
-router.get('/products', (req, res) => {
-  db.collection('products').get().then((querySnapshot) => {
-    const data = [];
-    // unable to `.map` on `querySnapshot`
-    querySnapshot.forEach(doc => data.push(Object.assign({}, {
-      id: doc.id
-    }, doc.data())));
-
-    res.json(data);
-  }).catch(e => {
-    res.status(500).json({ message: 'Something went wrong ', error: e });
-  })
 });
 
 
@@ -103,13 +89,14 @@ router.get('/products', (req, res) => {
 router.post('/prices/:id', (req, res) => {
   // add price data
   const { productInfo, scrapedInfo } = req.body;
-  const storedPrice = Number(productInfo.price);
-  const scrapedPrice = Number(scrapedInfo.price);
+  const storedPrice = productInfo.price;
+  const scrapedPrice = scrapedInfo.price;
 
   if (storedPrice !== scrapedPrice) {
-    /**
-     * TODO will need to update the 'products' collection
-     */
+    db.collection('products').doc(hash(productInfo.url)).update(
+      Object.assign({}, productInfo, scrapedInfo)
+    );
+
     db.collection('prices').add({
       pid: productInfo.id,
       price: scrapedPrice,
@@ -119,6 +106,13 @@ router.post('/prices/:id', (req, res) => {
     }).catch(e => {
       res.status(500).json({ message: 'Something went wrong!', error: e });
     });
+
+    if (scrapedPrice < storedPrice) {
+      email(Object.assign({}, productInfo, {
+        storedPrice,
+        scrapedPrice
+      }))
+    }
   } else {
     res.json({ message: 'Done, but nothing has really changed!' });
   }
