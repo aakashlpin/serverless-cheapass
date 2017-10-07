@@ -55,18 +55,17 @@ router.post('/products', (req, res) => {
   request({
     url: `${process.env.LAMBDA_ENDPOINT}/dev/add`,
     method: 'POST',
-    json: {
+    form: {
       url,
-    },
-    headers: {
-      "Content-type": "application/json",
     },
   }, (error, response, body) => {
     if (error) {
       return res.status(500).json({ message: 'Something went wrong', error });
     }
 
-    const scrapedInfo = body;
+    console.log({ body });
+    const scrapedInfo = JSON.parse(body);
+    console.log({ scrapedInfo });
     if (!scrapedInfo.url) {
       return res.status(500).json({ message: 'something went wrong with scraping the url; attached the data from scraping server', scrapedInfo });
     }
@@ -89,6 +88,21 @@ router.post('/products', (req, res) => {
 router.post('/prices/:id', (req, res) => {
   // add price data
   const { productInfo, scrapedInfo } = req.body;
+  console.log({ productInfo, scrapedInfo });
+  if (!scrapedInfo) {
+    // something went wrong with scraping. lets try again
+    request({
+      url: `${process.env.LAMBDA_ENDPOINT}/dev/crawl`,
+      method: 'POST',
+      json: productInfo,
+      headers: {
+        "Content-type": "application/json",
+      },
+    });
+
+    return;
+  }
+
   const storedPrice = productInfo.price;
   const scrapedPrice = scrapedInfo.price;
 
