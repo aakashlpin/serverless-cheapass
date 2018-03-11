@@ -3,16 +3,8 @@ const express = require('express');
 const router = express.Router();
 
 const request = require('request');
-const admin = require('firebase-admin');
-
 const email = require('./email');
-const serviceAccount = require('../fs-auth.json');
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
-const db = admin.firestore();
+const db = require('./db');
 
 const hash = url => md5(url);
 

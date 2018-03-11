@@ -1,14 +1,17 @@
 const express = require('express');
+const cors = require('cors');
 const bodyParser = require('body-parser');
 const api = require('./src/api');
+const homepage = require('./src/homepage');
 
 const app = express();
+app.use(cors());
+app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.set('view engine', 'ejs');
 
-app.get('/', (req, res) => {
-  res.json({ hello: 'world'});
-});
+app.get('/', homepage);
 
 app.use('/api', api);
 

@@ -1,0 +1,41 @@
+<html>
+  <head>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="/js/homepage.js"></script>
+  </head>
+  <body>
+    <section class="container mx-auto px-4 py-8">
+      <!-- <h1 class="text-2xl text-grey font-normal mb-2">Your dashboard</h1> -->
+      <!-- <form id="add-product-form" class="w-full max-w-sm mb-8">
+        <div class="flex items-center border-b border-b-2 border-teal py-2">
+          <input class="appearance-none bg-transparent border-none w-full text-grey-darker mr-3 py-1 px-2" type="text" placeholder="Paste URL"
+          aria-label="URL">
+          <button class="flex-no-shrink bg-teal hover:bg-teal-dark border-teal hover:border-teal-dark text-sm border-4 text-white py-1 px-2 rounded"
+          type="button">
+            Track Price
+          </button>
+          <button class="flex-no-shrink border-transparent border-4 text-teal hover:text-teal-darker text-sm py-1 px-2 rounded" type="button">
+            Cancel
+          </button>
+        </div>
+      </form> -->
+
+      <h1 class="text-2xl font-normal mb-2">Your alerts</h1>
+
+      <ul class="flex flex-row flex-wrap items-top content-around list-reset">
+        <% products.forEach(function(product) { %>
+          <li class="w-64 rounded border border-grey-lightest mr-8 relative">
+            <div class="h-48 flex items-center">
+              <img class="max-h-full mx-auto block" src="<%= product.image %>" alt="<%= product.name %>">
+            </div>
+            <div class="px-6 py-4 bg-grey-lightest">
+              <p class="text-base mb-2"><%= product.name %></p>
+              <p class="font-bold text-grey-darker">₹<%= product.price %></p>
+            </div>
+          </li>
+        <% }); %>
+      </ul>
+    </section>
+  </body>
+</html>
